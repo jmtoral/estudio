@@ -6,5 +6,5 @@ main:
     url: /posts/
     weight: 2
   - name: Curso de minería de Texto 🔥
-    url: "https://jmtoral.github.io/text_mining_2021/"
+    url: /docs/
     weight: 3
