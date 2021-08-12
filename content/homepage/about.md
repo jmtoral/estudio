@@ -54,7 +54,7 @@ La idea de este sitio es tener un espacio libre en donde pueda escribir mis idea
 
 ## Sobre quien escribe
 
-Mi nombre es Manuel Toral. Nací y crecí en el oriente de la Ciudad de México. Estudié Ciencia Política y Relaciones Internacionales en el Centro de Investigación y Docencia Económicas (CIDE) y también una Maestría en Política Pública en la *Harris School of Public Policy* de la Universidad de Chicago. Es esta última me especialicé en el trabajo con datos y me convertí en el experto residente de asesoría en *R* y en *STATA*.
+Mi nombre es Manuel Toral. Nací y crecí en el oriente de la Ciudad de México. Estudié Ciencia Política y Relaciones Internacionales en el Centro de Investigación y Docencia Económicas (CIDE) y también una Maestría en Política Pública en la *Harris School of Public Policy* de la Universidad de Chicago. En esta última me especialicé en el trabajo con datos y me convertí en el experto residente de asesoría en *R* y en *STATA*.
 
 Me interesan los datos de seguridad, violencia y justicia. 
 
