@@ -1,0 +1,225 @@
+---
+title: "Bases perronas Vol. I: Barragán"
+authors:
+  - Manuel Toral
+date: 2021-08-10
+categories: ["R", "scraping"]
+tags: ["bases perronas", "scrapping", "tutoriales"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = T)
+```
+
+
+Inauguro este espacio escribiendo sobre cosas que me gustan y por las que me interesé en las bases de datos. Una de esas cosas es la de recopilar información de la internet y jugar con ella, con liberad y quizás como detonante de otras ideas.
+
+Un ejemplo es la base de la [Fundación Barragán](https://www.barragan-foundation.org), establecida en 1996 en Birsfelden en Suiza. Llegué a ella por una discusión en twitter y me impresioné del trabajo tan minucioso de la fundación por recuerar el legado de Barragán. Pensé que sería interesante tener esa información en una base de datos y jugar con ella a voluntad. Acá les comparto el proceso.
+
+## Bibliotecas
+
+Voy a usar el conjunto de paquetes del `tidyverse` para el tratamiento general de los datos y el *raspador web* (scrapeador) `rvest`.
+
+
+<p>&nbsp;</p> 
+
+<p>&nbsp;</p> 
+
+```{r}
+pacman::p_load(tidyverse, rvest, rayshader, tmap)
+```
+
+
+<p>&nbsp;</p> 
+
+<p>&nbsp;</p> 
+
+## Definir el URL
+
+Extraeré la información Barragán en mi computadora.
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+```{r}
+url <- "https://www.barragan-foundation.org/works/list"
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+## Iniciar el *raspado* (scraping)
+
+Utilicé [_Selector Gadget_](https://chrome.google.com/webstore/detail/selectorgadget/mhjhnkcfbdhnjickkkdbjoemdmbfginb?hl=es) para seleccionar en la página de la Fundación Barragán las ubicaciones de las piezas de información que necesitaba. Esta herramiente me permitió por ejemplo, seleccionar todos los años de las obras gracias que están ubicadas en *.work-year*. Al poner esta ubicación en el comando ```html_nodes()``` puedo extraer todo lo que se encuentre en ese lugar.
+
+Así fue como construí un objeto para cada uno de los elementos que necesitaba. Probablemente este es un buen espacio para pensar en una función o en un ```apply``` que ahorre líneas de código. 
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+```{r}
+
+yr <- read_html(url) %>% 
+  html_nodes(".work-year") %>% 
+  html_text()
+
+titulo <- read_html(url) %>% 
+  html_nodes(".work-title") %>% 
+  html_text()
+
+categoria <- read_html(url) %>% 
+  html_nodes(".category") %>% 
+  html_text()
+
+colaboracion <- read_html(url) %>% 
+  html_nodes(".meta-collab") %>% 
+  html_text()
+
+locacion <- read_html(url) %>% 
+  html_nodes(".short-location") %>% 
+  html_text()
+
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+## Coordenadas
+
+```{r}
+url_map <- "https://www.barragan-foundation.org/works/map"
+```
+
+```{r}
+
+lat <- read_html(url_map) %>% 
+  html_nodes("section")%>% 
+  html_attr("data-lat")
+
+long <- read_html(url_map) %>% 
+  html_nodes("section")%>% 
+  html_attr("data-lon")
+
+dir <- read_html(url_map) %>% 
+  html_nodes("section")%>% 
+  html_attr("data-addr")
+
+
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+## Pegamos todo en un tibble
+
+Uní todas las partes que fui recolectando en una sola tabla.
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+```{r}
+barragan <- tibble(
+  year = yr %>% str_squish(),
+  titulo, 
+  categoria = categoria %>% str_squish(),
+  colaboracion=colaboracion %>% str_squish(),
+  locacion=locacion %>% str_squish(),
+  latitud = lat,
+  longitud = long,
+  direccion = dir
+)
+
+glimpse(barragan)
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+¿Qué hacer con esta base? Pues, además de conocer la obra de Barragán, quizás sea una buena oportunidad para visualizar. Por ejemplo, la localización de cada una de sus obras. Voy a usar ```sf``` de Edzer Pebesma y ```tmap``` de Martijn Tennekes.
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+```{r}
+tmap_mode("view")
+
+mapa <- barragan %>% 
+  mutate(across(c(latitud, longitud), 
+                as.numeric)) %>% 
+  filter(!is.na(longitud)) %>% 
+  sf::st_as_sf(coords = c("longitud", "latitud"), 
+               crs = 4329)
+
+tm_shape(mapa) + tm_dots()
+
+
+```
+
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+## Pièce de résistance
+
+Y aquí es donde se me ocurrió una idea: "imaginemos que cada punto en donde se localiza una obra de Barragán fuera una torre de Satélite". Así es como hice los pasos prohibidos: ```rayshader``` de [Tyler Morgan-Wall](Tyler Morgan-Wall),
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+```{r}
+
+primcol <- c("white","yellow", "blue", "grey80", "red")
+
+
+#color=sample(primcol, 16, replace=T)
+  
+satelite <- barragan %>% 
+  filter(locacion == "Guadalajara, State of Jalisco") %>% 
+  filter(!is.na(latitud)) %>% 
+  mutate(alto = floor(runif(n(), min=1, max=5))) %>% 
+  add_row(alto = 0) %>% 
+  ggplot(aes(latitud, longitud,
+             color = alto)) +
+  geom_point(size = 5, shape=17) +
+  scale_color_gradientn(colours = primcol) +
+  guides(color = "none") +
+  theme(axis.text = element_blank(),
+        axis.title = element_blank(),
+        panel.background = element_blank(), 
+        axis.ticks = element_blank())
+
+satelite
+```
+
+```{r, eval =F}
+plot_gg(satelite, width = 5, 
+        multicore = TRUE, windowsize = c(1400, 700), 
+        zoom = 0.3, phi = 35, 
+        theta = 30, sunangle = 200, 
+        soliddepth = -100)
+
+Sys.sleep(5)
+
+render_snapshot()
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/jmtoral/portfolio_jmtoral/master/satelite3d.png" width="500" alt="Resultado final"/>
+</p>
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+
+## Datos sobre la sesión
+
+```{r}
+sessionInfo()
+```
+

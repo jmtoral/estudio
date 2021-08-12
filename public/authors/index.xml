@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Authors on El estudio de Manuel Toral</title>
+    <link>/authors/</link>
+    <description>Recent content in Authors on El estudio de Manuel Toral</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <copyright>&amp;copy; 2021 &lt;a href=&#34;https://www.wangchucheng.com/&#34;&gt;C. Wang&lt;/a&gt; and &lt;a href=&#34;https://www.ruiqima.com/&#34;&gt;R. Ma&lt;/a&gt;
+</copyright>
+    <lastBuildDate>Tue, 10 Aug 2021 00:00:00 +0000</lastBuildDate><atom:link href="/authors/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Manuel Toral</title>
+      <link>/authors/manuel-toral/</link>
+      <pubDate>Tue, 10 Aug 2021 00:00:00 +0000</pubDate>
+      
+      <guid>/authors/manuel-toral/</guid>
+      <description>Mi nombre es Manuel Toral. Nací y crecí en el oriente de la Ciudad de México. Estudié Ciencia Política y Relaciones Internacionales en el Centro de Investigación y Docencia Económicas (CIDE) y también una Maestría en Política Pública en la Harris School of Public Policy de la Universidad de Chicago. Es esta última me especialicé en el trabajo con datos y me convertí en el experto residente de asesoría en R y en STATA.
+Me interesan los datos de seguridad, violencia y justicia.</description>
+    </item>
+    
+    <item>
+      <title>Example Author</title>
+      <link>/authors/example-author/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/authors/example-author/</guid>
+      <description>Sobre este estudio Cras ex dui, tristique a libero eget, consectetur semper ligula. Nunc augue arcu, malesuada a nisi et, molestie finibus metus. Sed lacus odio, ultricies a nisl vitae, sollicitudin tempor ipsum. Vivamus quis feugiat arcu. Sed mi nunc, efficitur quis tellus vitae, posuere mattis metus. Phasellus in mattis dui. Nullam blandit, augue non ullamcorper dapibus, lacus dui molestie massa, in iaculis purus lectus eu lectus. Duis hendrerit lacinia tellus, sit amet feugiat dolor placerat id.</description>
+    </item>
+    
+    <item>
+      <title>Manuel Toral</title>
+      <link>/authors/hugo-authors/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/authors/hugo-authors/</guid>
+      <description>Mi nombre es Manuel Toral. Nací y crecí en el oriente de la Ciudad de México. Estudié Ciencia Política y Relaciones Internacionales en el Centro de Investigación y Docencia Económicas (CIDE) y también una Maestría en Política Pública en la Harris School of Public Policy de la Universidad de Chicago. Es esta última me especialicé en el trabajo con datos y me convertí en el experto residente de asesoría en R y en STATA.
+Me interesan los datos de seguridad, violencia y justicia.</description>
+    </item>
+    
+  </channel>
+</rss>
