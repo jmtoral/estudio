@@ -1,0 +1,10 @@
+main:
+  - name: Acerca de
+    url: '#about'
+    weight: 1
+  - name: Posts
+    url: /posts/
+    weight: 2
+  - name: Curso de minería de Texto 🔥
+    url: "https://jmtoral.github.io/text_mining_2021/"
+    weight: 3
