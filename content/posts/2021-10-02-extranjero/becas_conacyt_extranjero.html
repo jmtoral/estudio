@@ -1,0 +1,417 @@
+---
+title: 'Becas al extranjero CONACYT: una radiografía (Parte I)'
+authors: Manuel Toral
+date: '2021-10-02'
+categories:
+- R
+- educación
+tags:
+- bases perronas
+- wrangling
+- tutoriales
+- excel
+- bases públicas
+---
+
+<script src="/rmarkdown-libs/header-attrs/header-attrs.js"></script>
+
+
+<p>Muchas veces países como el mío, México, adolecen de falta de información sobre cómo y en qué se gasta el dinero del gobierno. Escándalo tras escándalo se fragua en la discusión pública sin que haya una perspectiva más amplia, nunca objetiva, de los temas en cuestión. Es por eso que es alentador que haya información disponible para resolver y entender un contexto.</p>
+<p>Recientemente, el hilo de un periodista en twitter acusó a la hija de la Jefa de Gobierno de la Ciudad de México de haber recibido un montón de dinero para estudiar en el extranjero. La discusión, lejos de aportar evidencias de si era un monto común o si hay más personas estudiando en el mismo campo de estudios, se centró en lo ya comunes duelos a muerte de acusaciones sin fundamento y argumentos sobre las personas.</p>
+<p>Es casi una verdad de perogrullo que el lenguaje es la expresión del conflicto político y, ni modo, así es el debate de los temas públicos en redes, un poquito morbo, un poquito de superioridad moral y por ahí una oportunidad para pavonearse en los datos. No obstante, una de las consecuencias negativas es que, desde mi mera observación, pareciera quedarse la idea de que está mal recibir una beca en general y, peor, que esta sea de un monto muy abultado.</p>
+<p>Es por eso que hago este breve post con un análisis bastante somero de una fuente interesante de información: el <a href="https://conacyt.mx/becas_posgrados/padron-de-beneficiarios/">Padrón de Beneficiarios del CONACyT</a> (Consejo Nacional de Ciencia y Tecnología).</p>
+<div id="bibliotecas" class="section level2">
+<h2>Bibliotecas</h2>
+<p>Para este ejercicio voy a usar la navaja suiza del <code>tidyverse</code>, <code>readxl</code> para usar los archivos de <em>MS Excel</em> 🤢🤮🤡 y algunos paquetes para enchular las vizes y usar geometrías como los <em>treemaps</em>.</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<pre class="r"><code>pacman::p_load(tidyverse, #navaja suiza
+               tidytext, # Por si se ocupa algo de texto
+               janitor, # paquete maravilloso para limpieza
+               readxl, # para esa dolorosa tarea
+               treemapify, # Para usar treemaps
+               ggalt, # Otras geometrías!
+               extrafont, # Para importar fuentes
+               wesanderson, # Mi paleta favorita
+               viridis) #Los colores ya clásicos de viridis</code></pre>
+</div>
+<div id="datos" class="section level1">
+<h1>Datos</h1>
+<p>Las tablas que voy a usar se encuentran en <a href="https://conacyt.mx/becas_posgrados/padron-de-beneficiarios/">este sitio web público</a> del CONACyT. Este sitio tiene un servicio denominado <em>Incapsula</em> que previene de su raspado (<em>scraping</em>) convencional así que decidí no complicarme la vida descargar todos los archivos con un <a href="https://chrome.google.com/webstore/detail/simple-mass-downloader/abdkkegmcbiomijcbdaodaflgehfffed">“descargador masivo”</a>.</p>
+<p>
+ 
+</p>
+<p>Es posible descargar 54 archivos en formato <code>.xls</code> 🤢🤮 con distintos tipo de información elaborados por la Dirección Adjunta de Posgrados y Becas: personas beneficiadas por becas nacionales y al extranjero, estancias posdocotrales, sabáticas y “postdoctorales COVID-19”, repatriaciones y retenciones, tabuladores, entre otras, de 2012 a junio de 2020. En este artículo me concentraré en un viejo conocido en mi vida: las becas al extranjero. Además, no usaré sólo los años completos, es decir, no utilizaré el archivo del parcial a enero - junio de 2021.</p>
+<p>
+ 
+</p>
+<p>En 2015 quien le escribe fue beneficiario de este programa, por lo que fue interesante descubrir mi nombre y el monto en que les mexicanes me apoyaron cuando estudié en la Universidad de Chicago.</p>
+<p>
+ 
+</p>
+<p>Así pues, decidí leer los archivos en una lista y comenzar a limpiar y ordenar… porque Excel 🤢🤮. Algunos problemas:</p>
+<p>
+ 
+</p>
+<ul>
+<li>La estructura de las tablas de cada archivo no son consistentes. Difieren en nombre y posición.</li>
+<li>Dadas las condiciones del punto anterior, no todas las tablas recuperan el monto total en un campo con el mismo nombre, pero sí en la misma posición.</li>
+<li>Las fechas en Excel son una monserga. En este caso, algunas observaciones se importaron como la conversión numérica de la fecha y otras como un texto con la expresión convencional. No sé ustedes, pero este escenario me ocurre muy a menudo y me parece una pesadilla. Lo peor: esto sólo ocurre en algunos archivos: 2020, 2013 y 2014.</li>
+</ul>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<div id="limpieza-y-homologación" class="section level2">
+<h2>Limpieza y Homologación</h2>
+<p>Primero lo primero, necesito que todas las tablas de los archivos tengan la misma forma y sus campos tengan la misma clase, para este fin utilizaré la función <code>lapply</code> que me permite hacer un blucle cuyo resultado es una lista. En este caso, cada una de las tablas de cada uno de los archivos de Becas en el Extranjero.</p>
+<p>
+ 
+</p>
+<p>Por el momento no voy a utilizar la variable que identifica el sexo de la persona toda vez que sólo aparece en 2019, 2020 y en el parcial de 2021.</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<pre class="r"><code>archivos &lt;- list.files(&quot;input&quot;, full.names = T) # Localizo los archivos
+
+nombres_archivos &lt;- archivos %&gt;% # Le pongo nombre a cada tabla
+  str_extract(&quot;\\d{4}&quot;)          # con el año correspondiente.
+
+nombres_campos &lt;- c( # Homologo el nombre de los campos.
+  &quot;consec&quot;, &quot;inicio_de_beca&quot;, &quot;termino_de_beca&quot;, &quot;nivel_de_estudios&quot;,
+  &quot;institucion&quot;, &quot;pais&quot;, &quot;programa_de_estudios&quot;, &quot;area_del_conocimiento&quot;,
+  &quot;monto_anual&quot;
+)
+
+lista_xls &lt;- lapply(archivos, function(x){
+  read_excel(x, skip = 2) %&gt;% # 1. Leo
+    clean_names() %&gt;% # 2. Limpio los nombre complicados
+    filter(!is.na(consec)) %&gt;% # 3. Quito las observaciones vacías 
+    select(-starts_with(&quot;x&quot;)) %&gt;% # 4. Borro que empiecen con &quot;x&quot;
+    select(c(1,3:9, ncol(.))) %&gt;% # 5. Variables de interés.
+    set_names(nombres_campos) %&gt;% # 6 Homologo el nombre de los campos
+    mutate(area_del_conocimiento =
+             str_remove(area_del_conocimiento, 
+                        &quot;\\b[A-Z]{2,3}\\. &quot;)) %&gt;% 
+  # 7. Quito los molestos números romanos que cambian año con año.    
+    mutate(pais = str_replace(pais, &quot;REP. DE COREA&quot;, &quot;COREA&quot;),
+           pais = str_replace(pais, &quot;HOLANDA|PAISES BAJOS&quot;, &quot;PAÍSES BAJOS&quot;),
+           pais = str_to_title(pais)) %&gt;% 
+    mutate(institucion = str_to_title(institucion),
+           institucion = str_replace(institucion, &quot;Of&quot;, &quot;of&quot;),
+           institucion = str_replace(institucion, &quot;De&quot;, &quot;de&quot;))
+
+})
+
+names(lista_xls) &lt;- nombres_archivos</code></pre>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+</div>
+<div id="arreglar-las-fechas" class="section level2">
+<h2>Arreglar las fechas</h2>
+<p>Voy a utilizar un <em>old fashined</em> blucle del tipo <code>for</code> para especificar qué objetos de mi lista voy a modificar. En aquellos objetos que ya se importaron correctamente, conservaré esa propiedad y tranformaré en el formato fecha convencional.</p>
+<p>
+ 
+</p>
+<p>En aquellos donde Excel hizo su magia, voy a convertir aquellas observaciones que están expresadas en números de Excel y convertirlos a fechas.</p>
+<p>
+ 
+</p>
+<pre class="r"><code>
+# Fechas mal :)
+
+
+for(i in names(lista_xls)[c(1:3,5,6,9)]) {
+  lista_xls[[i]] &lt;- lista_xls[[i]] %&gt;% 
+    mutate(inicio_de_beca = as.Date(inicio_de_beca),
+           termino_de_beca = as.Date(termino_de_beca ))
+}
+
+# Fechas mal :(
+
+
+for(i in names(lista_xls)[-c(1:3,5,6,9)]) {
+  lista_xls[[i]] &lt;- lista_xls[[i]] %&gt;% 
+    mutate(inicio_de_beca = case_when(
+      str_detect(inicio_de_beca, &quot;\\b[0-9]{5}&quot;) ~ 
+        as.Date(as.numeric(inicio_de_beca), origin = &quot;1899-12-30&quot;),
+      TRUE ~ as.Date(inicio_de_beca, &quot;%d/%m/%Y&quot;)
+    ))  %&gt;% 
+    mutate(termino_de_beca = case_when(
+      str_detect(termino_de_beca, &quot;\\b[0-9]{5}&quot;) ~ 
+        as.Date(as.numeric(termino_de_beca), origin = &quot;1899-12-30&quot;),
+      TRUE ~ as.Date(termino_de_beca, &quot;%d/%m/%Y&quot;)
+    ))
+}</code></pre>
+<p>
+ 
+</p>
+</div>
+<div id="unir-todo-finalmente" class="section level2">
+<h2>Unir todo… finalmente</h2>
+<p>
+ 
+</p>
+<pre class="r"><code>
+completa &lt;- bind_rows(lista_xls, .id=&quot;yr&quot;)</code></pre>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+</div>
+<div id="deflactar" class="section level2">
+<h2>Deflactar</h2>
+<p>Para comparar los montos en la variable <code>monto anual</code> es necesario convertir los pesos nominales a pesos reales. Utilizaré el <a href="https://fundar.org.mx/wp-content/uploads/2021/09/100-2022-incl..pdf"><em>Deflactor Implícito del PIB</em></a> de FUNDAR.</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<pre class="r"><code>deflactor &lt;- tibble(
+  yr = as.character(seq(2012,2020,1)),
+  base_def = c(72.41259032, 73.5179316,76.77470131, 
+                78.94867789, 83.35039752, 88.97363649,
+                93.37181906,  97.24518037, 100)
+  )
+
+completa &lt;- completa %&gt;% 
+  left_join(deflactor) %&gt;% 
+  mutate(monto_real_20 = monto_anual*(100/base_def))
+## Joining, by = &quot;yr&quot;</code></pre>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+</div>
+</div>
+<div id="algunos-análisis" class="section level1">
+<h1>Algunos análisis</h1>
+<div id="las-becas-conacyt-al-extranjero-en-el-tiempo" class="section level2">
+<h2>Las becas CONACyT al extranjero en el tiempo</h2>
+<p>Ahora sí, después de todo este merequetengue, estamos listes para hacer algunos análisis. Por ejemplo, el monto que al final del año se erogó a las becas. Al menos de estas tablas, vemos un descenso en los montos finales en los últimos años.</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<pre class="r"><code>completa %&gt;% 
+  group_by(yr) %&gt;% 
+  summarise(suma = sum(monto_real_20)) %&gt;%
+  ungroup() %&gt;% 
+  ggplot(aes(yr, suma/1000000000, group = 1)) +
+  geom_line(size=1.2) +
+  geom_point(aes(color = suma), size=4) +
+  labs(x = &quot;Año&quot;, y=&quot;Miles de millones de pesos (base 2020)\n&quot;,
+       title=&quot;Montos totales erogados para Becas CONACYT al extranjero&quot;,
+       caption = &quot;@jmtoralc | Padrón de Beneficiarios | Dirección Adjunta de Posgrados y Becas de CONACyT&quot;) +
+  hrbrthemes::theme_ipsum(grid = &quot;Y&quot;) +
+  scale_y_continuous(limits = c(1, 2.6),
+                     breaks = seq(1,2.5,.5),
+                     labels = seq(1,2.5,.5)) +
+  guides(color =&quot;none&quot;) +
+  scale_color_gradientn(colors = wesanderson::wes_palette(&quot;Zissou1&quot;, 5, &quot;continuous&quot;))</code></pre>
+<p><img src="/posts/2021-10-02-extranjero/becas_conacyt_extranjero_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<p>Estos montos no necesariamente se traducen en personas, pero siguen una tendencia similar. Por ejemplo, si sólo estudiamos el número de personas que recibieron este beneficio vemos una tendencia similar en los últimos años.</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<pre class="r"><code>completa %&gt;% 
+  group_by(yr) %&gt;% 
+  summarise(suma = n()) %&gt;%
+  ungroup() %&gt;% 
+  ggplot(aes(yr, suma/1000, group = 1)) +
+  geom_line(size=1.2) +
+  geom_point(aes(color = suma), size=4) +
+  labs(x = &quot;Año&quot;, y=&quot;Miles de personas\n&quot;,
+       title=&quot;Personas beficiadas con Becas CONACYT al extranjero&quot;,
+       caption = &quot;@jmtoralc | Padrón de Beneficiarios | Dirección Adjunta de Posgrados y Becas de CONACyT&quot;) +
+  hrbrthemes::theme_ipsum(grid = &quot;Y&quot;) +
+  scale_y_continuous(limits = c(3, 8),
+                     breaks = seq(3,8,1),
+                     labels = seq(3,8,1)) +
+  guides(color =&quot;none&quot;) +
+  scale_color_gradientn(colors = wesanderson::wes_palette(&quot;Zissou1&quot;, 5, &quot;continuous&quot;))</code></pre>
+<p><img src="/posts/2021-10-02-extranjero/becas_conacyt_extranjero_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+</div>
+<div id="las-universidades-con-más-estudiantes" class="section level2">
+<h2>Las universidades con más estudiantes</h2>
+<pre class="r"><code>completa %&gt;% 
+  group_by(yr, institucion) %&gt;% 
+  summarise(n = n()) %&gt;% 
+  arrange(-n) %&gt;% 
+  top_n(10) %&gt;%
+  ungroup %&gt;% 
+  left_join(completa %&gt;% distinct(yr, institucion, pais)) %&gt;% 
+  mutate(yr = as.factor(yr),
+         order = reorder_within(institucion, n, yr)) %&gt;%
+  ggplot(aes(order, 
+             n,
+             color = pais)) +
+  geom_lollipop(size=2) +
+  coord_flip() + 
+  facet_wrap(~yr, scales = &quot;free&quot;, ncol = 3)+
+  hrbrthemes::theme_ipsum(grid = &quot;&quot;) +
+  scale_x_reordered() +
+  scale_color_brewer(name = &quot;País&quot;,
+                     palette =&quot;Set1&quot;,
+                     direction = -1) +
+  labs(title = &quot;Las 10 Universidades con más estudiantes becados&quot;,
+       subtitle = &quot;por país y año&quot;, 
+       x = &quot;Institución&quot;,
+       y = &quot;Número de estudiantes&quot;,
+       caption = &quot;@jmtoralc | Padrón de Beneficiarios | Dirección Adjunta de Posgrados y Becas de CONACyT&quot;) +
+  theme(axis.title.y = element_text(size = 20),
+        axis.title.x = element_text(size = 20))
+## `summarise()` has grouped output by &#39;yr&#39;. You can override using the `.groups` argument.
+## Selecting by n
+## Joining, by = c(&quot;yr&quot;, &quot;institucion&quot;)</code></pre>
+<p><img src="/posts/2021-10-02-extranjero/becas_conacyt_extranjero_files/figure-html/unnamed-chunk-5-1.png" width="1440" /></p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+</div>
+<div id="las-universidades-en-las-que-se-ha-invertido-más-dinero" class="section level2">
+<h2>Las universidades en las que se ha invertido más dinero</h2>
+<pre class="r"><code>completa %&gt;% 
+  group_by(yr, institucion) %&gt;% 
+  summarise(n = sum(monto_real_20)) %&gt;% 
+  arrange(-n) %&gt;% 
+  top_n(10) %&gt;%
+  ungroup %&gt;% 
+  left_join(completa %&gt;% distinct(yr, institucion, pais)) %&gt;% 
+  mutate(yr = as.factor(yr),
+         order = reorder_within(institucion, n, yr)) %&gt;%
+  ggplot(aes(order, 
+             n/1000000,
+             color = pais)) +
+  geom_lollipop(size=2) +
+  coord_flip() + 
+  facet_wrap(~yr, scales = &quot;free&quot;, ncol = 3)+
+  hrbrthemes::theme_ipsum(grid = &quot;&quot;) +
+  scale_x_reordered() +
+  scale_color_brewer(name = &quot;País&quot;,
+                     palette =&quot;Dark2&quot;,
+                     direction = -1) +
+  labs(title = &quot;Las 10 Universidades con más dinero recibido&quot;,
+       subtitle = &quot;por concepto de becas CONACYT, por país y año&quot;, 
+       x = &quot;Institución&quot;,
+       y = &quot;Millones de pesos (base 2020)&quot;,
+       caption = &quot;@jmtoralc | Padrón de Beneficiarios | Dirección Adjunta de Posgrados y Becas de CONACyT&quot;)  +
+  theme(axis.title.y = element_text(size = 20),
+        axis.title.x = element_text(size = 20))
+## `summarise()` has grouped output by &#39;yr&#39;. You can override using the `.groups` argument.
+## Selecting by n
+## Joining, by = c(&quot;yr&quot;, &quot;institucion&quot;)</code></pre>
+<p><img src="/posts/2021-10-02-extranjero/becas_conacyt_extranjero_files/figure-html/unnamed-chunk-6-1.png" width="1440" /></p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+<p>
+ 
+</p>
+</div>
+</div>
+<div id="datos-sobre-la-sesión" class="section level1">
+<h1>Datos sobre la sesión</h1>
+<pre class="r"><code>sessionInfo()
+## R version 4.1.1 (2021-08-10)
+## Platform: x86_64-w64-mingw32/x64 (64-bit)
+## Running under: Windows 10 x64 (build 18362)
+## 
+## Matrix products: default
+## 
+## locale:
+## [1] LC_COLLATE=Spanish_Mexico.1252  LC_CTYPE=Spanish_Mexico.1252   
+## [3] LC_MONETARY=Spanish_Mexico.1252 LC_NUMERIC=C                   
+## [5] LC_TIME=Spanish_Mexico.1252    
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices utils     datasets  methods   base     
+## 
+## other attached packages:
+##  [1] viridis_0.6.1     viridisLite_0.4.0 wesanderson_0.3.6 extrafont_0.17   
+##  [5] ggalt_0.4.0       treemapify_2.5.5  readxl_1.3.1      janitor_2.1.0    
+##  [9] tidytext_0.3.1    forcats_0.5.1     stringr_1.4.0     dplyr_1.0.7      
+## [13] purrr_0.3.4       readr_1.4.0       tidyr_1.1.3       tibble_3.1.4     
+## [17] ggplot2_3.3.5     tidyverse_1.3.1  
+## 
+## loaded via a namespace (and not attached):
+##  [1] fs_1.5.0           lubridate_1.7.10   ash_1.0-15         RColorBrewer_1.1-2
+##  [5] httr_1.4.2         SnowballC_0.7.0    tools_4.1.1        backports_1.2.1   
+##  [9] bslib_0.2.5.1      utf8_1.2.2         R6_2.5.1           KernSmooth_2.23-20
+## [13] DBI_1.1.1          colorspace_2.0-1   withr_2.4.2        tidyselect_1.1.1  
+## [17] gridExtra_2.3      compiler_4.1.1     extrafontdb_1.0    cli_3.0.1         
+## [21] rvest_1.0.1        pacman_0.5.1       xml2_1.3.2         labeling_0.4.2    
+## [25] bookdown_0.22      sass_0.4.0         scales_1.1.1       proj4_1.0-10.1    
+## [29] systemfonts_1.0.2  digest_0.6.27      rmarkdown_2.9      pkgconfig_2.0.3   
+## [33] htmltools_0.5.1.1  highr_0.9          dbplyr_2.1.1       maps_3.3.0        
+## [37] rlang_0.4.11       rstudioapi_0.13    farver_2.1.0       jquerylib_0.1.4   
+## [41] generics_0.1.0     jsonlite_1.7.2     tokenizers_0.2.1   magrittr_2.0.1    
+## [45] Matrix_1.3-4       Rcpp_1.0.7         munsell_0.5.0      fansi_0.5.0       
+## [49] ggfittext_0.9.1    gdtools_0.2.3      lifecycle_1.0.0    stringi_1.7.3     
+## [53] yaml_2.2.1         snakecase_0.11.0   MASS_7.3-54        grid_4.1.1        
+## [57] hrbrthemes_0.8.0   crayon_1.4.1       lattice_0.20-44    haven_2.4.1       
+## [61] hms_1.1.0          knitr_1.33         pillar_1.6.2       reprex_2.0.0      
+## [65] glue_1.4.2         evaluate_0.14      blogdown_1.4       modelr_0.1.8      
+## [69] vctrs_0.3.8        Rttf2pt1_1.3.8     cellranger_1.1.0   gtable_0.3.0      
+## [73] assertthat_0.2.1   xfun_0.24          broom_0.7.7        janeaustenr_0.1.5 
+## [77] ellipsis_0.3.2</code></pre>
+</div>

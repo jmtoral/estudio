@@ -8,13 +8,49 @@
     <language>en</language>
     <copyright>&amp;copy; 2021 &lt;a href=&#34;https://www.wangchucheng.com/&#34;&gt;C. Wang&lt;/a&gt; and &lt;a href=&#34;https://www.ruiqima.com/&#34;&gt;R. Ma&lt;/a&gt;
 </copyright>
-    <lastBuildDate>Tue, 10 Aug 2021 00:00:00 +0000</lastBuildDate><atom:link href="/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 02 Oct 2021 00:00:00 +0000</lastBuildDate><atom:link href="/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>bases perronas</title>
       <link>/tags/bases-perronas/</link>
-      <pubDate>Tue, 10 Aug 2021 00:00:00 +0000</pubDate>
+      <pubDate>Sat, 02 Oct 2021 00:00:00 +0000</pubDate>
       
       <guid>/tags/bases-perronas/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>bases públicas</title>
+      <link>/tags/bases-p%C3%BAblicas/</link>
+      <pubDate>Sat, 02 Oct 2021 00:00:00 +0000</pubDate>
+      
+      <guid>/tags/bases-p%C3%BAblicas/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>excel</title>
+      <link>/tags/excel/</link>
+      <pubDate>Sat, 02 Oct 2021 00:00:00 +0000</pubDate>
+      
+      <guid>/tags/excel/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>tutoriales</title>
+      <link>/tags/tutoriales/</link>
+      <pubDate>Sat, 02 Oct 2021 00:00:00 +0000</pubDate>
+      
+      <guid>/tags/tutoriales/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>wrangling</title>
+      <link>/tags/wrangling/</link>
+      <pubDate>Sat, 02 Oct 2021 00:00:00 +0000</pubDate>
+      
+      <guid>/tags/wrangling/</guid>
       <description></description>
     </item>
     
@@ -24,15 +60,6 @@
       <pubDate>Tue, 10 Aug 2021 00:00:00 +0000</pubDate>
       
       <guid>/tags/scrapping/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>tutoriales</title>
-      <link>/tags/tutoriales/</link>
-      <pubDate>Tue, 10 Aug 2021 00:00:00 +0000</pubDate>
-      
-      <guid>/tags/tutoriales/</guid>
       <description></description>
     </item>
     

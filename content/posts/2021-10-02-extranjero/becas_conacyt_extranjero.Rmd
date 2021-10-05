@@ -1,0 +1,350 @@
+---
+title: 'Becas al extranjero CONACYT: una radiografía (Parte I)'
+authors: Manuel Toral
+date: '2021-10-02'
+categories:
+- R
+- educación
+tags:
+- bases perronas
+- wrangling
+- tutoriales
+- excel
+- bases públicas
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = T)
+```
+
+Muchas veces países como el mío, México, adolecen de falta de información sobre cómo y en qué se gasta el dinero del gobierno. Escándalo tras escándalo se fragua en la discusión pública sin que haya una perspectiva más amplia, nunca objetiva, de los temas en cuestión. Es por eso que es alentador que haya información disponible para resolver y entender un contexto.
+
+Recientemente, el hilo de un periodista en twitter acusó a la hija de la Jefa de Gobierno de la Ciudad de México de haber recibido un montón de dinero para estudiar en el extranjero. La discusión, lejos de aportar evidencias de si era un monto común o si hay más personas estudiando en el mismo campo de estudios, se centró en lo ya comunes duelos a muerte de acusaciones sin fundamento y argumentos sobre las personas.
+
+Es casi una verdad de perogrullo que el lenguaje es la expresión del conflicto político y, ni modo, así es el debate de los temas públicos en redes, un poquito morbo, un poquito de superioridad moral y por ahí una oportunidad para pavonearse en los datos. No obstante, una de las consecuencias negativas es que, desde mi mera observación, pareciera quedarse la idea de que está mal recibir una beca en general y, peor, que esta sea de un monto muy abultado. 
+
+Es por eso que hago este breve post con un análisis bastante somero de una fuente interesante de información: el [Padrón de Beneficiarios del CONACyT](https://conacyt.mx/becas_posgrados/padron-de-beneficiarios/) (Consejo Nacional de Ciencia y Tecnología).
+
+
+## Bibliotecas
+
+Para este ejercicio voy a usar la navaja suiza del `tidyverse`, `readxl` para usar los archivos de *MS Excel* 🤢🤮🤡 y algunos paquetes para enchular las vizes y usar geometrías como los *treemaps*.
+
+<p>&nbsp;</p> 
+
+<p>&nbsp;</p> 
+
+```{r bibliotecas}
+pacman::p_load(tidyverse, #navaja suiza
+               tidytext, # Por si se ocupa algo de texto
+               janitor, # paquete maravilloso para limpieza
+               readxl, # para esa dolorosa tarea
+               treemapify, # Para usar treemaps
+               ggalt, # Otras geometrías!
+               extrafont, # Para importar fuentes
+               wesanderson, # Mi paleta favorita
+               viridis) #Los colores ya clásicos de viridis
+```
+
+
+# Datos
+
+Las tablas que voy a usar se encuentran en [este sitio web público](https://conacyt.mx/becas_posgrados/padron-de-beneficiarios/) del CONACyT. Este sitio tiene un servicio denominado *Incapsula* que previene de su raspado (*scraping*) convencional así que decidí no complicarme la vida descargar todos los archivos con un ["descargador masivo"](https://chrome.google.com/webstore/detail/simple-mass-downloader/abdkkegmcbiomijcbdaodaflgehfffed).
+
+<p>&nbsp;</p> 
+
+
+Es posible descargar 54 archivos en formato `.xls` 🤢🤮 con distintos tipo de información elaborados por la Dirección Adjunta de Posgrados y Becas: personas beneficiadas por becas nacionales y al extranjero, estancias posdocotrales, sabáticas y "postdoctorales COVID-19", repatriaciones y retenciones, tabuladores, entre otras, de 2012 a junio de 2020. En este artículo me concentraré en un viejo conocido en mi vida: las becas al extranjero. Además, no usaré sólo los años completos, es decir, no utilizaré el archivo del parcial a enero - junio de 2021.
+
+<p>&nbsp;</p> 
+
+En 2015 quien le escribe fue beneficiario de este programa, por lo que fue interesante descubrir mi nombre y el monto en que les mexicanes me apoyaron cuando estudié en la Universidad de Chicago.
+
+<p>&nbsp;</p> 
+
+Así pues, decidí leer los archivos en una lista y comenzar a limpiar y ordenar... porque Excel 🤢🤮. Algunos problemas:
+
+<p>&nbsp;</p> 
+
+- La estructura de las tablas de cada archivo no son consistentes. Difieren en nombre y posición.
+- Dadas las condiciones del punto anterior, no todas las tablas recuperan el monto total en un campo con el mismo nombre, pero sí en la misma posición.
+- Las fechas en Excel son una monserga. En este caso, algunas observaciones se importaron como la conversión numérica de la fecha y otras como un texto con la expresión convencional. No sé ustedes, pero este escenario me ocurre muy a menudo y me parece una pesadilla. Lo peor: esto sólo ocurre en algunos archivos: 2020, 2013 y 2014.
+
+
+
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+## Limpieza y Homologación
+
+Primero lo primero, necesito que todas las tablas de los archivos tengan la misma forma y sus campos tengan la misma clase, para este fin utilizaré la función `lapply` que me permite hacer un blucle cuyo resultado es una lista. En este caso, cada una de las tablas de cada uno de los archivos de Becas en el Extranjero.
+
+<p>&nbsp;</p> 
+
+Por el momento no voy a utilizar la variable que identifica el sexo de la persona toda vez que sólo aparece en 2019, 2020 y en el parcial de 2021. 
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+
+```{r lectura, message=FALSE, warning=FALSE}
+archivos <- list.files("input", full.names = T) # Localizo los archivos
+
+nombres_archivos <- archivos %>% # Le pongo nombre a cada tabla
+  str_extract("\\d{4}")          # con el año correspondiente.
+
+nombres_campos <- c( # Homologo el nombre de los campos.
+  "consec", "inicio_de_beca", "termino_de_beca", "nivel_de_estudios",
+  "institucion", "pais", "programa_de_estudios", "area_del_conocimiento",
+  "monto_anual"
+)
+
+lista_xls <- lapply(archivos, function(x){
+  read_excel(x, skip = 2) %>% # 1. Leo
+    clean_names() %>% # 2. Limpio los nombre complicados
+    filter(!is.na(consec)) %>% # 3. Quito las observaciones vacías 
+    select(-starts_with("x")) %>% # 4. Borro que empiecen con "x"
+    select(c(1,3:9, ncol(.))) %>% # 5. Variables de interés.
+    set_names(nombres_campos) %>% # 6 Homologo el nombre de los campos
+    mutate(area_del_conocimiento =
+             str_remove(area_del_conocimiento, 
+                        "\\b[A-Z]{2,3}\\. ")) %>% 
+  # 7. Quito los molestos números romanos que cambian año con año.    
+    mutate(pais = str_replace(pais, "REP. DE COREA", "COREA"),
+           pais = str_replace(pais, "HOLANDA|PAISES BAJOS", "PAÍSES BAJOS"),
+           pais = str_to_title(pais)) %>% 
+    mutate(institucion = str_to_title(institucion),
+           institucion = str_replace(institucion, "Of", "of"),
+           institucion = str_replace(institucion, "De", "de"))
+
+})
+
+names(lista_xls) <- nombres_archivos
+
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+
+## Arreglar las fechas
+
+Voy a utilizar un *old fashined* blucle del tipo `for` para especificar qué objetos de mi lista voy a modificar. En aquellos objetos que ya se importaron correctamente, conservaré esa propiedad y tranformaré en el formato fecha convencional.
+
+<p>&nbsp;</p> 
+
+En aquellos donde Excel hizo su magia, voy a convertir aquellas observaciones que están expresadas en números de Excel y convertirlos a fechas.
+
+<p>&nbsp;</p> 
+
+```{r fechas, warning=F, message=F}
+
+# Fechas mal :)
+
+
+for(i in names(lista_xls)[c(1:3,5,6,9)]) {
+  lista_xls[[i]] <- lista_xls[[i]] %>% 
+    mutate(inicio_de_beca = as.Date(inicio_de_beca),
+           termino_de_beca = as.Date(termino_de_beca ))
+}
+
+# Fechas mal :(
+
+
+for(i in names(lista_xls)[-c(1:3,5,6,9)]) {
+  lista_xls[[i]] <- lista_xls[[i]] %>% 
+    mutate(inicio_de_beca = case_when(
+      str_detect(inicio_de_beca, "\\b[0-9]{5}") ~ 
+        as.Date(as.numeric(inicio_de_beca), origin = "1899-12-30"),
+      TRUE ~ as.Date(inicio_de_beca, "%d/%m/%Y")
+    ))  %>% 
+    mutate(termino_de_beca = case_when(
+      str_detect(termino_de_beca, "\\b[0-9]{5}") ~ 
+        as.Date(as.numeric(termino_de_beca), origin = "1899-12-30"),
+      TRUE ~ as.Date(termino_de_beca, "%d/%m/%Y")
+    ))
+}
+
+```
+
+<p>&nbsp;</p> 
+
+## Unir todo... finalmente
+
+<p>&nbsp;</p> 
+
+```{r}
+
+completa <- bind_rows(lista_xls, .id="yr")
+
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+## Deflactar
+
+Para comparar los montos en la variable `monto anual` es necesario convertir los pesos nominales a pesos reales. Utilizaré el [*Deflactor Implícito del PIB*](https://fundar.org.mx/wp-content/uploads/2021/09/100-2022-incl..pdf) de FUNDAR.
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+```{r}
+deflactor <- tibble(
+  yr = as.character(seq(2012,2020,1)),
+  base_def = c(72.41259032, 73.5179316,76.77470131, 
+                78.94867789, 83.35039752, 88.97363649,
+                93.37181906,  97.24518037, 100)
+  )
+
+completa <- completa %>% 
+  left_join(deflactor) %>% 
+  mutate(monto_real_20 = monto_anual*(100/base_def))
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+# Algunos análisis
+
+## Las becas CONACyT al extranjero en el tiempo
+
+Ahora sí, después de todo este merequetengue, estamos listes para hacer algunos análisis. Por ejemplo, el monto que al final del año se erogó a las becas. Al menos de estas tablas, vemos un descenso en los montos finales en los últimos años.
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+```{r}
+completa %>% 
+  group_by(yr) %>% 
+  summarise(suma = sum(monto_real_20)) %>%
+  ungroup() %>% 
+  ggplot(aes(yr, suma/1000000000, group = 1)) +
+  geom_line(size=1.2) +
+  geom_point(aes(color = suma), size=4) +
+  labs(x = "Año", y="Miles de millones de pesos (base 2020)\n",
+       title="Montos totales erogados para Becas CONACYT al extranjero",
+       caption = "@jmtoralc | Padrón de Beneficiarios | Dirección Adjunta de Posgrados y Becas de CONACyT") +
+  hrbrthemes::theme_ipsum(grid = "Y") +
+  scale_y_continuous(limits = c(1, 2.6),
+                     breaks = seq(1,2.5,.5),
+                     labels = seq(1,2.5,.5)) +
+  guides(color ="none") +
+  scale_color_gradientn(colors = wesanderson::wes_palette("Zissou1", 5, "continuous"))
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+Estos montos no necesariamente se traducen en personas, pero siguen una tendencia similar. Por ejemplo, si sólo estudiamos el número de personas que recibieron este beneficio vemos una tendencia similar en los últimos años.
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+```{r}
+completa %>% 
+  group_by(yr) %>% 
+  summarise(suma = n()) %>%
+  ungroup() %>% 
+  ggplot(aes(yr, suma/1000, group = 1)) +
+  geom_line(size=1.2) +
+  geom_point(aes(color = suma), size=4) +
+  labs(x = "Año", y="Miles de personas\n",
+       title="Personas beficiadas con Becas CONACYT al extranjero",
+       caption = "@jmtoralc | Padrón de Beneficiarios | Dirección Adjunta de Posgrados y Becas de CONACyT") +
+  hrbrthemes::theme_ipsum(grid = "Y") +
+  scale_y_continuous(limits = c(3, 8),
+                     breaks = seq(3,8,1),
+                     labels = seq(3,8,1)) +
+  guides(color ="none") +
+  scale_color_gradientn(colors = wesanderson::wes_palette("Zissou1", 5, "continuous"))
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+## Las universidades con más estudiantes
+
+```{r, fig.width= 15, fig.height=10}
+completa %>% 
+  group_by(yr, institucion) %>% 
+  summarise(n = n()) %>% 
+  arrange(-n) %>% 
+  top_n(10) %>%
+  ungroup %>% 
+  left_join(completa %>% distinct(yr, institucion, pais)) %>% 
+  mutate(yr = as.factor(yr),
+         order = reorder_within(institucion, n, yr)) %>%
+  ggplot(aes(order, 
+             n,
+             color = pais)) +
+  geom_lollipop(size=2) +
+  coord_flip() + 
+  facet_wrap(~yr, scales = "free", ncol = 3)+
+  hrbrthemes::theme_ipsum(grid = "") +
+  scale_x_reordered() +
+  scale_color_brewer(name = "País",
+                     palette ="Set1",
+                     direction = -1) +
+  labs(title = "Las 10 Universidades con más estudiantes becados",
+       subtitle = "por país y año", 
+       x = "Institución",
+       y = "Número de estudiantes",
+       caption = "@jmtoralc | Padrón de Beneficiarios | Dirección Adjunta de Posgrados y Becas de CONACyT") +
+  theme(axis.title.y = element_text(size = 20),
+        axis.title.x = element_text(size = 20))
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+## Las universidades en las que se ha invertido más dinero
+
+```{r, fig.width= 15, fig.height=10}
+completa %>% 
+  group_by(yr, institucion) %>% 
+  summarise(n = sum(monto_real_20)) %>% 
+  arrange(-n) %>% 
+  top_n(10) %>%
+  ungroup %>% 
+  left_join(completa %>% distinct(yr, institucion, pais)) %>% 
+  mutate(yr = as.factor(yr),
+         order = reorder_within(institucion, n, yr)) %>%
+  ggplot(aes(order, 
+             n/1000000,
+             color = pais)) +
+  geom_lollipop(size=2) +
+  coord_flip() + 
+  facet_wrap(~yr, scales = "free", ncol = 3)+
+  hrbrthemes::theme_ipsum(grid = "") +
+  scale_x_reordered() +
+  scale_color_brewer(name = "País",
+                     palette ="Dark2",
+                     direction = -1) +
+  labs(title = "Las 10 Universidades con más dinero recibido",
+       subtitle = "por concepto de becas CONACYT, por país y año", 
+       x = "Institución",
+       y = "Millones de pesos (base 2020)",
+       caption = "@jmtoralc | Padrón de Beneficiarios | Dirección Adjunta de Posgrados y Becas de CONACyT")  +
+  theme(axis.title.y = element_text(size = 20),
+        axis.title.x = element_text(size = 20))
+
+```
+
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+<p>&nbsp;</p> 
+
+# Datos sobre la sesión
+
+```{r}
+sessionInfo()
+```
+
